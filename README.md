@@ -2,11 +2,13 @@
 
 An intelligent, interactive Japanese language learning platform powered by AI.
 
+Try it now @ [www.aijapanesetutor.org](https://www.aijapanesetutor.org)
+
 ## Features
 
 - 🤖 AI-powered conversation practice
-- Japanese-English translation
-- Conversation replay
+- 🔊 Voice input and text-to-speech
+- 🌐 Japanese-English translation
 
 ## Getting Started
 
