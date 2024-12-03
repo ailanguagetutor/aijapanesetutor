@@ -26,6 +26,7 @@ yarn install
 
 3. Start the development server:
 ```bash
+export GEMINI_API_KEY=your_api_key_here
 yarn dev
 ```
 
