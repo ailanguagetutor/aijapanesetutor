@@ -12,6 +12,7 @@ export default function Home() {
   const [inputValue, setInputValue] = useState<string>('');
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [isUsingGemini, setIsUsingGemini] = useState<boolean>(false);
 
   const chatMessagesRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -24,33 +25,59 @@ export default function Home() {
 
   useEffect(() => {
     const initJA2ENTranslator = async () => {
-      const languagePair = {
-        sourceLanguage: 'ja',
-        targetLanguage: 'en',
-      };
+      if (typeof translation !== 'undefined') {
+        const languagePair = {
+          sourceLanguage: 'ja',
+          targetLanguage: 'en',
+        };
 
-      const canTranslate = await translation.canTranslate(languagePair);
-      let translator;
-      if (canTranslate !== 'no') {
-        if (canTranslate === 'readily') {
-          // The translator can immediately be used.
-          translator = await translation.createTranslator(languagePair);
+        const canTranslate = await translation.canTranslate(languagePair);
+        let translator;
+        if (canTranslate !== 'no') {
+          if (canTranslate === 'readily') {
+            translator = await translation.createTranslator(languagePair);
+          }
         }
+        setJA2ENTranslator(translator);
       } else {
-        // The translator can't be used at all.
+        // Fallback to Gemini API endpoint for translation
+        setJA2ENTranslator({
+          translate: async (text: string) => {
+            const response = await fetch('/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                message: `Translate the following Japanese text to English:\n\n${text}`,
+                conversationHistory: ''
+              })
+            });
+            const data = await response.json();
+            return data.response;
+          }
+        });
       }
-
-      setJA2ENTranslator(translator);
     };
+
     initJA2ENTranslator();
   }, []);
 
   useEffect(() => {
     const initializeLlmSession = async () => {
-      const session = await ai.languageModel.create({
-        systemPrompt: "Act asa Japanese language tutor and have a conversation with a student, in Japanese language."
-      });
-      setLlmSession(session);
+      if (typeof ai !== 'undefined') {
+        try {
+          const session = await ai.languageModel.create({
+            systemPrompt: "Act as a Japanese language tutor and have a conversation with a student, in Japanese language."
+          });
+          setLlmSession(session);
+          setIsUsingGemini(false);
+        } catch (error) {
+          console.log("Primary LLM unavailable, falling back to Gemini");
+          setIsUsingGemini(true);
+        }
+      } else {
+        console.log("AI is undefined, using Gemini");
+        setIsUsingGemini(true);
+      }
     };
 
     initializeLlmSession();
@@ -77,40 +104,57 @@ export default function Home() {
   };
 
   const getBotResponse = async (message: string): Promise<string> => {
-    console.log("Querying bot: " + message);
-
     const conversationHistory = messages
       .slice(-50)
       .map(msg => `${msg.isUser ? "User" : "Assistant"}: ${msg.content}`)
       .join("\n");
+    const defaultErrorReply = "申し訳ありません。エラーが発生しました。Please try reloading the page.";
+    if (isUsingGemini) {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message,
+            conversationHistory: conversationHistory
+          }),
+        });
 
-    const result = await llmSession.prompt(`You are having a conversation in Japanese. Here's the conversation so far:
-
-${conversationHistory}
-
-Reply in this structured format:
-
-Input: "Long time no see!"
-Output: { "reply": "How have you been?" }
-
-Now, construct a reply to the latest message:
-
-Input: "${message}"
-Output:`);
-
-    const jsonMatch = result.match(/\{.*?\}/);
-    let reply = "";
-
-    if (jsonMatch) {
-      const jsonString = jsonMatch[0];
-      const parsedJson = JSON.parse(jsonString);
-      reply = parsedJson.reply;
+        const data = await response.json();
+        return data.response;
+      } catch (error) {
+        return defaultErrorReply;
+      }
     } else {
-      // TODO: Handle this better
-      console.log("No JSON found in the text.");
-    }
+      // Original LLM API call
+      const result = await llmSession.prompt(`You are having a conversation in Japanese. Here's the conversation so far:
 
-    return reply;
+          ${conversationHistory}
+          
+          Reply in this structured format:
+          
+          Input: "Long time no see!"
+          Output: { "reply": "How have you been?" }
+          
+          Now, construct a reply to the latest message:
+          
+          Input: "${message}"
+          Output:`);
+
+      const jsonMatch = result.match(/\{.*?\}/);
+      let reply = "";
+
+      if (jsonMatch) {
+        const jsonString = jsonMatch[0];
+        const parsedJson = JSON.parse(jsonString);
+        reply = parsedJson.reply;
+      } else {
+        reply = defaultErrorReply;
+      }
+      return reply;
+    }
   };
 
   const handleSendMessage = (userInput: string) => {
@@ -205,7 +249,7 @@ Output:`);
               <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
                 <div className="text-center mb-8">
                   <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-2">
-                    AI Japanese Tutor
+                    <a href="https://www.aijapanesetutor.org">AI Japanese Tutor</a>
                   </h1>
                   <p className="text-gray-600">Your personal Japanese tutor and conversation practice partner</p>
                 </div>
