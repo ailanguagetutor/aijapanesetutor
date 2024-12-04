@@ -1,14 +1,17 @@
 # AI Japanese Tutor 🎌
 
-An intelligent, interactive Japanese language learning platform powered by AI.
+A Japanese voice chat application for conversation practice powered by AI.
+
+This is an entry for the [Google Chrome Built-in AI Challenge hackathon](https://googlechromeai.devpost.com/). It leverages Chrome’s built-in AI APIs if available, and falls back to Google's Gemini API if not.
 
 Try it now @ [www.aijapanesetutor.org](https://www.aijapanesetutor.org)
 
 ## Features
 
 - 🤖 AI-powered conversation practice
-- 🔊 Voice input and text-to-speech
-- 🌐 Japanese-English translation
+- 🎤 Voice input: Speak Japanese and get real-time responses
+- 🔊 Text-to-speech: Hear the AI's responses in Japanese
+- 🌐 Instant Japanese-English translation for better understanding
 
 ## Getting Started
 
@@ -33,3 +36,7 @@ yarn dev
 ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
+
+## License
+
+MIT License - see the [LICENSE](LICENSE) file for details.
