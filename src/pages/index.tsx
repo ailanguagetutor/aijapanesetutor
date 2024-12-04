@@ -248,10 +248,24 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100 py-6 flex flex-col justify-center sm:py-12">
       <Head>
-        <title>AI Japanese Tutor: Your personal Japanese tutor and conversation practice partner</title>
-        <meta name="description" content="AI Language Tutor: Japanese conversation practice with your AI language tutor" />
+        <title>AI Japanese Tutor: Your personal Japanese conversation practice partner</title>
+        <meta name="description" content="AI Japanese Tutor: Japanese voice chat with your AI language tutor" />
+        <meta property="og:title" content="AI Japanese Tutor: Your personal Japanese conversation practice partner" />
+        <meta property="og:description" content="AI Japanese Tutor: Japanese voice chat with your AI language tutor" />
+        <meta property="og:url" content="https://www.aijapanesetutor.org" />
         <link rel="canonical" href="https://www.aijapanesetutor.org" />
         <link rel="icon" href="/favicon.ico" />
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-E9Y1KGP9Z0"></script>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', 'G-E9Y1KGP9Z0');
+            `,
+          }}
+        />
       </Head>
 
       <div className="relative py-3 sm:max-w-4xl sm:mx-auto w-full px-4 sm:px-0">
