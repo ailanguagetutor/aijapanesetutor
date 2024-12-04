@@ -171,55 +171,68 @@ export default function Home() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      mediaRecorderRef.current.start();
-
-      setIsRecording(true);
-      setStatusMessage('Recording... Speak now.');
-
-      if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognitionRef.current = new SpeechRecognition();
-        recognitionRef.current.lang = 'ja-JP';
-        recognitionRef.current.continuous = false;
-        recognitionRef.current.interimResults = false;
-        recognitionRef.current.start();
-
-        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-
-        };
-
-        recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
-          const transcript = Array.from(event.results)
-            .map(result => result[0])
-            .map(result => result.transcript)
-            .join('');
-
-          setInputValue(transcript);
-
-          if (event.results[0].isFinal) {
-            stopRecording();
-            handleSendMessage(transcript);
-          }
-        };
-      } else {
-        setStatusMessage('Speech recognition is not supported in this browser.');
+      // Only use SpeechRecognition without MediaRecorder
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setStatusMessage('Speech recognition is not supported on this browser/device.');
+        return;
       }
+
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.lang = 'ja-JP';
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+
+      recognitionRef.current.onstart = () => {
+        setIsRecording(true);
+        setStatusMessage('Listening... Speak now.');
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setStatusMessage(`Speech recognition error: ${event.error}`);
+        setIsRecording(false);
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+        setStatusMessage('');
+      };
+
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+
+        setInputValue(transcript);
+
+        if (event.results[0].isFinal) {
+          handleSendMessage(transcript);
+        }
+      };
+
+      recognitionRef.current.start();
+
     } catch (error) {
-      setStatusMessage('Error accessing the microphone. Please ensure you have given permission and are using a supported browser.');
+      console.error('Recording error:', error);
+      setStatusMessage(
+        'Error starting speech recognition. This feature may not be supported on your device.'
+      );
+      setIsRecording(false);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      if (recognitionRef.current) {
+    if (recognitionRef.current) {
+      try {
         recognitionRef.current.stop();
+      } catch (error) {
+        console.error('Error stopping speech recognition:', error);
       }
-      setIsRecording(false);
-      setStatusMessage('');
     }
+    setIsRecording(false);
+    setStatusMessage('');
   };
 
   const handleTranslateMessage = async (index: number) => {
