@@ -48,7 +48,8 @@ export default function Home() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 message: `Translate the following Japanese text to English:\n\n${text}`,
-                conversationHistory: ''
+                conversationHistory: '',
+                isTranslation: true
               })
             });
             const data = await response.json();
@@ -118,7 +119,8 @@ export default function Home() {
           },
           body: JSON.stringify({
             message,
-            conversationHistory: conversationHistory
+            conversationHistory: conversationHistory,
+            isTranslation: false
           }),
         });
 

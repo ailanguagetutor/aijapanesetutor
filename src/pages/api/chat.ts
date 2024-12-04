@@ -1,10 +1,49 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import getConfig from 'next/config';
 
 const { serverRuntimeConfig } = getConfig();
 const genAI = new GoogleGenerativeAI(serverRuntimeConfig.geminiApiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+
+const translationSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    response: {
+      type: SchemaType.STRING,
+      description: "The English translation of the Japanese text",
+      nullable: false,
+    },
+  },
+  required: ["response"],
+};
+
+const conversationSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    response: {
+      type: SchemaType.STRING,
+      description: "The Japanese conversation response",
+      nullable: false,
+    },
+  },
+  required: ["response"],
+};
+
+const translationModel = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash-8b",
+  generationConfig: {
+    responseMimeType: "application/json",
+    responseSchema: translationSchema,
+  },
+});
+
+const conversationModel = genAI.getGenerativeModel({
+  model: "gemini-1.5-flash-8b",
+  generationConfig: {
+    responseMimeType: "application/json",
+    responseSchema: conversationSchema,
+  },
+});
 
 // Rate limiting stores
 const globalRequests = {
@@ -72,20 +111,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { message, conversationHistory } = req.body;
-    const prompt = `
-あなたは日本語の会話パートナーです。以下の会話履歴を参考にして、学生と日本語で会話を続けてください。質問に答えたり、会話を進めたりしてください。
+    const { message, conversationHistory, isTranslation } = req.body;
+    let prompt, result;
+
+    if (isTranslation) {
+      prompt = `Translate the following Japanese text to English: ${message}`;
+      result = await translationModel.generateContent(prompt);
+    } else {
+      prompt = `
+あなたは日本語の会話パートナーです。以下の会話履歴を参考にして、学生と日本語で会話を続けてください。
 
 会話履歴:
 ${conversationHistory}
 
-学生: ${message}
+学生: ${message}`;
+      result = await conversationModel.generateContent(prompt);
+    }
 
-あなた:`;
-
-    const result = await model.generateContent(prompt);
-
-    res.status(200).json({ response: result.response.text() });
+    const responseText = result.response.text();
+    res.status(200).json(JSON.parse(responseText));
   } catch (error) {
     console.error('Failed to get response from Gemini', error);
     res.status(500).json({ error: 'Failed to get response from Gemini' });
