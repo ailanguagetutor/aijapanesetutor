@@ -48,7 +48,8 @@ export default function Home() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 message: `Translate the following Japanese text to English:\n\n${text}`,
-                conversationHistory: ''
+                conversationHistory: '',
+                isTranslation: true
               })
             });
             const data = await response.json();
@@ -65,9 +66,7 @@ export default function Home() {
     const initializeLlmSession = async () => {
       if (typeof ai !== 'undefined') {
         try {
-          const session = await ai.languageModel.create({
-            systemPrompt: "Act as a Japanese language tutor and have a conversation with a student, in Japanese language."
-          });
+          const session = await initLanguageModel();
           setLlmSession(session);
           setIsUsingGemini(false);
         } catch (error) {
@@ -103,12 +102,22 @@ export default function Home() {
     window.speechSynthesis.speak(utterance);
   };
 
+  async function initLanguageModel() {
+    return await ai.languageModel.create({
+      systemPrompt: "Act as a Japanese language tutor and have a conversation with a student, in Japanese language."
+    });
+  }
+
+  async function reloadLlmSession() {
+    setLlmSession(await initLanguageModel());
+  }
+
   const getBotResponse = async (message: string): Promise<string> => {
     const conversationHistory = messages
       .slice(-50)
       .map(msg => `${msg.isUser ? "User" : "Assistant"}: ${msg.content}`)
       .join("\n");
-    const defaultErrorReply = "申し訳ありません。エラーが発生しました。Please try reloading the page.";
+    const defaultErrorReply = "申し訳ありません。エラーが発生しました。An error occurred; please try again.";
     if (isUsingGemini) {
       try {
         const response = await fetch('/api/chat', {
@@ -118,7 +127,8 @@ export default function Home() {
           },
           body: JSON.stringify({
             message,
-            conversationHistory: conversationHistory
+            conversationHistory: conversationHistory,
+            isTranslation: false
           }),
         });
 
@@ -151,6 +161,7 @@ export default function Home() {
         const parsedJson = JSON.parse(jsonString);
         reply = parsedJson.reply;
       } else {
+        reloadLlmSession();
         reply = defaultErrorReply;
       }
       return reply;
